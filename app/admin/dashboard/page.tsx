@@ -2,22 +2,47 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Users, Sparkles, LogOut } from "lucide-react";
+import { Users, Sparkles, LogOut, Loader2 } from "lucide-react";
 import { RegistrationsTable } from "@/components/admin/RegistrationsTable";
 import { MatchingSystem } from "@/components/admin/MatchingSystem";
+import { supabase } from "@/lib/supabase";
+
+const MAX_PARTICIPANTS = 30;
 
 export default function AdminDashboard() {
     const router = useRouter();
     const [activeTab, setActiveTab] = useState<"registrations" | "matches">("registrations");
+    const [counts, setCounts] = useState({ women: 0, men: 0 });
+    const [countsLoading, setCountsLoading] = useState(true);
 
-    // Basic auth check
+    // Auth check
     useEffect(() => {
         const isAdmin = sessionStorage.getItem("isAdmin");
         if (!isAdmin) {
-            // Allow development access for now if needed, or enforce.
-            // router.push("/admin");
+            router.push("/admin");
         }
     }, [router]);
+
+    // Fetch real counts
+    useEffect(() => {
+        const fetchCounts = async () => {
+            const [{ count: womenCount }, { count: menCount }] = await Promise.all([
+                supabase.from("registrations").select("*", { count: "exact", head: true }).eq("gender", "female"),
+                supabase.from("registrations").select("*", { count: "exact", head: true }).eq("gender", "male"),
+            ]);
+            setCounts({ women: womenCount || 0, men: menCount || 0 });
+            setCountsLoading(false);
+        };
+
+        fetchCounts();
+
+        const channel = supabase
+            .channel("dashboard-counts")
+            .on("postgres_changes", { event: "*", schema: "public", table: "registrations" }, fetchCounts)
+            .subscribe();
+
+        return () => { supabase.removeChannel(channel); };
+    }, []);
 
     const handleLogout = () => {
         sessionStorage.removeItem("isAdmin");
@@ -31,9 +56,21 @@ export default function AdminDashboard() {
                 <h1 className="text-xl font-bold text-text">Speed Dating Admin</h1>
                 <div className="flex items-center gap-4">
                     <div className="hidden md:flex items-center gap-4 text-sm font-medium">
-                        <span className="text-coral">Women: 12/30</span>
-                        <span className="text-border">|</span>
-                        <span className="text-teal">Men: 15/30</span>
+                        {countsLoading ? (
+                            <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                        ) : (
+                            <>
+                                <span className={counts.women >= MAX_PARTICIPANTS ? "text-red-500 font-bold" : "text-coral"}>
+                                    Women: {counts.women}/{MAX_PARTICIPANTS}
+                                    {counts.women >= MAX_PARTICIPANTS && " FULL"}
+                                </span>
+                                <span className="text-border">|</span>
+                                <span className={counts.men >= MAX_PARTICIPANTS ? "text-red-500 font-bold" : "text-teal"}>
+                                    Men: {counts.men}/{MAX_PARTICIPANTS}
+                                    {counts.men >= MAX_PARTICIPANTS && " FULL"}
+                                </span>
+                            </>
+                        )}
                     </div>
                     <button
                         onClick={handleLogout}

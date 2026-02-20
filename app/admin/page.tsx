@@ -4,6 +4,10 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Lock } from "lucide-react";
 
+// The admin password is read from the environment variable NEXT_PUBLIC_ADMIN_PASSWORD.
+// Set this variable in .env.local and in your Vercel dashboard.
+const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || "admin123";
+
 export default function AdminLogin() {
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
@@ -11,9 +15,7 @@ export default function AdminLogin() {
 
     const handleLogin = (e: React.FormEvent) => {
         e.preventDefault();
-        if (password === "admin123") {
-            // In a real app, set a cookie or token
-            // For MVP, just redirect and maybe store in localStorage or context (insecure but fits requirements)
+        if (password === ADMIN_PASSWORD) {
             if (typeof window !== "undefined") {
                 sessionStorage.setItem("isAdmin", "true");
             }

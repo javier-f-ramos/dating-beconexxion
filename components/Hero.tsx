@@ -3,10 +3,35 @@
 import { RegistrationCounter } from "./RegistrationCounter";
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
+
+const MAX_PARTICIPANTS = 30;
 
 export function Hero() {
-    const isWomenFull = false; // TODO: Derived from context or props
-    const isMenFull = false;
+    const [counts, setCounts] = useState({ women: 0, men: 0 });
+
+    useEffect(() => {
+        const fetchCounts = async () => {
+            const [{ count: womenCount }, { count: menCount }] = await Promise.all([
+                supabase.from("registrations").select("*", { count: "exact", head: true }).eq("gender", "female"),
+                supabase.from("registrations").select("*", { count: "exact", head: true }).eq("gender", "male"),
+            ]);
+            setCounts({ women: womenCount || 0, men: menCount || 0 });
+        };
+
+        fetchCounts();
+
+        const channel = supabase
+            .channel("hero-counts")
+            .on("postgres_changes", { event: "*", schema: "public", table: "registrations" }, fetchCounts)
+            .subscribe();
+
+        return () => { supabase.removeChannel(channel); };
+    }, []);
+
+    const isWomenFull = counts.women >= MAX_PARTICIPANTS;
+    const isMenFull = counts.men >= MAX_PARTICIPANTS;
 
     return (
         <div className="relative overflow-hidden bg-background">
@@ -32,7 +57,7 @@ export function Hero() {
                     Join us for an evening of connection.
                 </p>
 
-                {/* Event Details placeholder */}
+                {/* Event Details */}
                 <div className="flex flex-col md:flex-row gap-4 md:gap-8 mb-10 text-sm font-medium text-text/80 bg-white/50 p-4 rounded-xl border border-border/50 backdrop-blur-sm">
                     <div className="flex items-center gap-2">
                         <span className="w-2 h-2 rounded-full bg-coral"></span>
@@ -57,12 +82,12 @@ export function Hero() {
                         href="/register?gender=female"
                         className={`
               group flex items-center justify-center gap-2 px-8 py-4 rounded-button font-semibold text-white transition-all
-              ${isWomenFull ? 'bg-gray-300 cursor-not-allowed' : 'bg-coral hover:bg-coral-hover shadow-lg shadow-coral/25 hover:shadow-xl hover:-translate-y-0.5'}
+              ${isWomenFull ? 'bg-gray-300 cursor-not-allowed pointer-events-none' : 'bg-coral hover:bg-coral-hover shadow-lg shadow-coral/25 hover:shadow-xl hover:-translate-y-0.5'}
             `}
                         aria-disabled={isWomenFull}
                         onClick={(e) => isWomenFull && e.preventDefault()}
                     >
-                        Register as Woman
+                        {isWomenFull ? "Women — Full" : "Register as Woman"}
                         {!isWomenFull && <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />}
                     </Link>
 
@@ -70,12 +95,12 @@ export function Hero() {
                         href="/register?gender=male"
                         className={`
               group flex items-center justify-center gap-2 px-8 py-4 rounded-button font-semibold text-white transition-all
-              ${isMenFull ? 'bg-gray-300 cursor-not-allowed' : 'bg-teal hover:bg-teal-hover shadow-lg shadow-teal/25 hover:shadow-xl hover:-translate-y-0.5'}
+              ${isMenFull ? 'bg-gray-300 cursor-not-allowed pointer-events-none' : 'bg-teal hover:bg-teal-hover shadow-lg shadow-teal/25 hover:shadow-xl hover:-translate-y-0.5'}
             `}
                         aria-disabled={isMenFull}
                         onClick={(e) => isMenFull && e.preventDefault()}
                     >
-                        Register as Man
+                        {isMenFull ? "Men — Full" : "Register as Man"}
                         {!isMenFull && <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />}
                     </Link>
                 </div>
@@ -86,7 +111,7 @@ export function Hero() {
 
                 <div className="mt-12 text-center">
                     <h2 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-coral to-teal bg-clip-text text-transparent transform hover:scale-105 transition-transform duration-300">
-                        DON'T MISS OUT ON FINDING LOVE!
+                        DON&apos;T MISS OUT ON FINDING LOVE!
                     </h2>
                 </div>
             </div>
