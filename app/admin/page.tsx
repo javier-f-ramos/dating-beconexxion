@@ -3,25 +3,20 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Lock } from "lucide-react";
-
-// The admin password is read from the environment variable NEXT_PUBLIC_ADMIN_PASSWORD.
-// Set this variable in .env.local and in your Vercel dashboard.
-const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || "admin123";
+import { loginAction } from "./actions";
 
 export default function AdminLogin() {
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
     const router = useRouter();
 
-    const handleLogin = (e: React.FormEvent) => {
+    const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (password === ADMIN_PASSWORD) {
-            if (typeof window !== "undefined") {
-                sessionStorage.setItem("isAdmin", "true");
-            }
+        const result = await loginAction(password);
+        if (result.success) {
             router.push("/admin/dashboard");
         } else {
-            setError("Invalid password");
+            setError(result.error || "Invalid password");
         }
     };
 

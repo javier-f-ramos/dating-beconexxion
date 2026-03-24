@@ -13,7 +13,7 @@ export function RegistrationCounter({ className }: RegistrationCounterProps) {
     const [counts, setCounts] = useState({ women: 0, men: 0 });
     const [loading, setLoading] = useState(true);
 
-    const MAX_PARTICIPANTS = 100;
+    const MAX_PARTICIPANTS = 30;
 
     useEffect(() => {
         const fetchCounts = async () => {

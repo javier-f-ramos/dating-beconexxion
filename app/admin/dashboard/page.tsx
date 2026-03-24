@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Users, Sparkles, LogOut, Loader2 } from "lucide-react";
+import { logoutAction } from "../actions";
 import { RegistrationsTable } from "@/components/admin/RegistrationsTable";
 import { MatchingSystem } from "@/components/admin/MatchingSystem";
 import { supabase } from "@/lib/supabase";
@@ -14,14 +15,6 @@ export default function AdminDashboard() {
     const [activeTab, setActiveTab] = useState<"registrations" | "matches">("registrations");
     const [counts, setCounts] = useState({ women: 0, men: 0 });
     const [countsLoading, setCountsLoading] = useState(true);
-
-    // Auth check
-    useEffect(() => {
-        const isAdmin = sessionStorage.getItem("isAdmin");
-        if (!isAdmin) {
-            router.push("/admin");
-        }
-    }, [router]);
 
     // Fetch real counts
     useEffect(() => {
@@ -44,8 +37,8 @@ export default function AdminDashboard() {
         return () => { supabase.removeChannel(channel); };
     }, []);
 
-    const handleLogout = () => {
-        sessionStorage.removeItem("isAdmin");
+    const handleLogout = async () => {
+        await logoutAction();
         router.push("/admin");
     };
 
